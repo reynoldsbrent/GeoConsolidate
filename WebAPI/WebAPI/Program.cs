@@ -1,3 +1,5 @@
+using StackExchange.Redis;
+using WebAPI.Services;
 
 namespace WebAPI
 {
@@ -13,6 +15,9 @@ namespace WebAPI
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+            builder.Services.AddHttpClient();
+            builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
+            builder.Services.AddScoped<IRedisService, RedisService>();
 
             var app = builder.Build();
 
