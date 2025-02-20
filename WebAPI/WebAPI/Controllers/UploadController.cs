@@ -63,7 +63,7 @@ namespace WebAPI.Controllers
             }
         }
 
-        [HttpGet("embeddings/{sessionId")]
+        [HttpGet("embeddings/{sessionId}")]
         public async Task<IActionResult> GetEmbeddings(string sessionId)
         {
             try
