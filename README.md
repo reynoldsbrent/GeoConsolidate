@@ -37,6 +37,10 @@ The .NET Web API should now be running.
 
 ### Setup Instructions (Fast API)
 1. Set up the Fast API
+    - Change directories to the FastAPI Embedding Service using `cd EmbeddingService`
+    - Create a virtual environment
+    - Make sure that your virtual environment is selected as the Python interpreter
+    - PIP install all of the required dependencies
 
 ### Setup Instructions (Redis)
 1. Install Redis For Windows
