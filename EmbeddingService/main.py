@@ -6,7 +6,10 @@ from sentence_transformers import SentenceTransformer
 import json
 import uuid
 import numpy as np
+from torch import cosine_similarity
 import uvicorn
+from sklearn.cluster import DBSCAN
+from collections import defaultdict
 
 
 app = FastAPI(title="Location Embedding Service")
@@ -33,8 +36,11 @@ class LocationData(BaseModel):
 async def process_locations(file: UploadFile = File(...)):
     try:
         # Read and parse JSON file
+        print(f"Received file: {file.filename}")
         content = await file.read()
-        lines = content.decode('utf-8').strip.split('\n')
+        lines = content.decode('utf-8').strip().split('\n')
+        print(f"Content first 100 chars: {lines[:100]}")
+        print(f"Number of lines: {len(lines)}")
         location_entries = [json.loads(line) for line in lines]
 
         # Process each location and generate vector embeddings
@@ -57,7 +63,7 @@ async def process_locations(file: UploadFile = File(...)):
                 norm_lat = float(entry['data']['lat']) / 90.0 # Latitude ranges from -90 degrees to 90 degrees
                 norm_lon = float(entry['data']['lon']) / 180.0 # Longitude ranges from -180 degrees to 180 degrees
 
-                # Append the coordinate embeddings with the latitude embedding
+                # Append the text embeddings with the coordinate embeddings
                 embedding_vector = np.append(text_embedding, [norm_lat, norm_lon])
             else:
                 # If there are no latitude and longitude coordinates for the location, fill in the coordinates with 0.0, 0.0
@@ -83,6 +89,47 @@ async def process_locations(file: UploadFile = File(...)):
     
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
+    
+@app.post("/process-similarity")
+async def process_similarity(embeddings: List[VectorEmbedding]):
+    try:
+        # Convert embeddings to numpy arrays
+        vectors = np.array([e.Embedding for e in embeddings])
+        
+        # DBSCAN used for clustering similar embeddings
+        # eps - maximum distance between samples (similarity threshold)
+        # min_samples - minimum number of samples in a cluster
+        clustering = DBSCAN(eps=0.05, min_samples=2, metric='cosine').fit(vectors)
+        
+        # Group embeddings by cluster
+        clusters = defaultdict(list)
+        for idx, label in enumerate(clustering.labels_):
+            # -1 means noise (no cluster)
+            if label != -1:
+                clusters[label].append({
+                    'id': embeddings[idx].LocationID,
+                    'location': embeddings[idx].Metadata.LabeledLocation,
+                    'latitude': embeddings[idx].Metadata.Latitude,
+                    'longitude': embeddings[idx].Metadata.Longitude
+                })
+        
+        # Filtering out single-item clusters and formating the response here
+        duplicate_groups = [
+            {
+                'group_id': f'group_{group_id}',
+                'locations': locations
+            }
+            for group_id, locations in clusters.items()
+            if len(locations) > 1
+        ]
+        
+        return {
+            'duplicate_groups': duplicate_groups,
+            'total_groups': len(duplicate_groups),
+            'total_duplicates': sum(len(group['locations']) for group in duplicate_groups)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing similarities: {str(e)}")
 
 @app.get("/health")
 async def health_check():
