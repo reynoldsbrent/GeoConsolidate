@@ -7,3 +7,9 @@ appsettings.Development.json
 
 # Virtual Environment
 venv
+
+# Pycache
+__pycache__/
+
+# Logs
+Logs
