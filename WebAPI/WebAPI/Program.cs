@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Logging;
+using Serilog;
 using StackExchange.Redis;
 using WebAPI.Services;
 
@@ -9,6 +11,15 @@ namespace WebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            // Serilog
+            builder.Host.UseSerilog((context, configuration) =>
+                configuration
+                    .WriteTo.File("Logs/app-.txt",
+                        rollingInterval: RollingInterval.Day,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                    .MinimumLevel.Information()
+            );
+
             // Add services to the container.
 
             builder.Services.AddControllers();
@@ -18,6 +29,9 @@ namespace WebAPI
             builder.Services.AddHttpClient();
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp => ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")));
             builder.Services.AddScoped<IRedisService, RedisService>();
+            builder.Services.AddHttpClient<ISimilarityService, SimilarityService>();
+            builder.Services.AddScoped<ISimilarityService, SimilarityService>();
+
 
             var app = builder.Build();
 
