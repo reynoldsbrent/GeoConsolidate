@@ -31,6 +31,7 @@ namespace WebAPI
             builder.Services.AddScoped<IRedisService, RedisService>();
             builder.Services.AddHttpClient<ISimilarityService, SimilarityService>();
             builder.Services.AddScoped<ISimilarityService, SimilarityService>();
+            builder.Services.AddScoped<IDeduplicationService, DeduplicationService>();
 
 
             var app = builder.Build();
