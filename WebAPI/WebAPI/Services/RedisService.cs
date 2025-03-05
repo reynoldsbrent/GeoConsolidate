@@ -21,6 +21,21 @@ namespace WebAPI.Services
             };
         }
 
+        public async Task<byte[]> GetDeduplicatedContentAsync(string sessionId)
+        {
+            var db = _redis.GetDatabase();
+            var content = await db.StringGetAsync($"deduplicated_content: {sessionId}");
+
+            if (content.IsNullOrEmpty)
+            {
+                _logger.LogWarning($"Deduplicated content not found for sessionId: {sessionId}");
+                return null;
+            }
+
+            _logger.LogInformation($"Retrieved deduplicated content for sessionId: {sessionId}, size: {content.Length} bytes");
+            return content;
+        }
+
         public async Task<List<VectorEmbedding>> GetEmbeddingsAsync(string sessionId)
         {
             var db = _redis.GetDatabase();
@@ -53,11 +68,40 @@ namespace WebAPI.Services
             }
         }
 
+        public async Task<string> GetOriginalContentAsync(string sessionId)
+        {
+            var db = _redis.GetDatabase();
+            var content = await db.StringGetAsync($"original_content: {sessionId}");
+
+            if (content.IsNullOrEmpty)
+            {
+                _logger.LogWarning($"Original content not found for sessionId: {sessionId}");
+                return null;
+            }
+
+            _logger.LogInformation($"Retrieved original content for sessionId: {sessionId}, size: {content.ToString().Length} bytes");
+            return content.ToString();
+        }
+
+        public async Task StoreDeduplicatedContentAsync(string sessionId, byte[] content)
+        {
+            var db = _redis.GetDatabase();
+            await db.StringSetAsync($"deduplicated_content: {sessionId}", content, TimeSpan.FromHours(24));
+            _logger.LogInformation($"Stored deduplicated content for sessionId: {sessionId}, size: {content.Length} bytes");
+        }
+
         public async Task StoreEmbeddingAsync(string sessionId, List<VectorEmbedding> embeddings)
         {
             var db = _redis.GetDatabase();
             var serializedData = JsonSerializer.Serialize(embeddings, _jsonOptions);
             await db.StringSetAsync($"embeddings: {sessionId}", serializedData, TimeSpan.FromHours(24));
+        }
+
+        public async Task StoreOriginalContentAsync(string sessionId, string content)
+        {
+            var db = _redis.GetDatabase();
+            await db.StringSetAsync($"original_content: {sessionId}", content, TimeSpan.FromHours(24));
+            _logger.LogInformation($"Stored original content for sessionId: {sessionId}, size: {content.Length} bytes");
         }
     }
 }
