@@ -49,6 +49,8 @@ namespace WebAPI.Controllers
 
                 using var reader = new StreamReader(file.OpenReadStream(), Encoding.UTF8);
                 var fileContent = await reader.ReadToEndAsync();
+                // store original JSON file in redis
+                await _redisService.StoreOriginalContentAsync(sessionId, fileContent);
                 _logger.LogInformation($"File content: {fileContent.Substring(0, Math.Min(fileContent.Length, 500))}..."); // first 500 chars or if the file is shorter, get the whole length
 
                 // Reset file stream position to 0
@@ -242,6 +244,74 @@ namespace WebAPI.Controllers
             {
                 _logger.LogError(ex, $"Error finding duplicates for sessionId: {sessionId}");
                 return StatusCode(500, "An error occurred while processing duplicates");
+            }
+        }
+
+        [HttpPost("deduplicate/{sessionId}")]
+        public async Task<IActionResult> DeduplicateFile(string sessionId)
+        {
+            try
+            {
+                _logger.LogInformation($"Starting deduplication for sessionId: {sessionId}");
+
+                var duplicates = await _similarityService.FindDuplicatesAsync(await _redisService.GetEmbeddingsAsync(sessionId));
+
+                if (duplicates == null || duplicates.DuplicateGroups == null || duplicates.DuplicateGroups.Count == 0)
+                {
+                    _logger.LogInformation($"No duplicates found for sessionId: {sessionId}");
+                    return Ok(new { message = "No duplicates found to remove" });
+                }
+
+                var originalContent = await _redisService.GetOriginalContentAsync(sessionId);
+                if (string.IsNullOrEmpty(originalContent))
+                {
+                    _logger.LogWarning($"Original content not found for sessionId: {sessionId}");
+                    return NotFound("Original file content not found");
+                }
+
+                var deduplicationService = HttpContext.RequestServices.GetRequiredService<IDeduplicationService>();
+                var deduplicatedContent = await deduplicationService.GetDeduplicatedJsonContentAsync(sessionId, duplicates, originalContent);
+
+                // Save deduplicated content to redis
+                await _redisService.StoreDeduplicatedContentAsync(sessionId, deduplicatedContent);
+
+                return Ok(new
+                {
+                    message = "Deduplication completed successfully",
+                    original_count = originalContent.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length,
+                    deduplicated_count = Encoding.UTF8.GetString(deduplicatedContent).Split('\n', StringSplitOptions.RemoveEmptyEntries).Length,
+                    removed_count = duplicates.TotalDuplicates - duplicates.TotalGroups
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error during deduplication for sessionId: {sessionId}");
+                return StatusCode(500, "An error occurred during deduplication");
+            }
+        }
+
+        [HttpGet("deduplicated/{sessionId}")]
+        public async Task<IActionResult> DownloadDeduplicated(string sessionId)
+        {
+            try
+            {
+                _logger.LogInformation($"Retrieving deduplicated content for sessionId: {sessionId}");
+
+                // Get deduplicated content from Redis
+                var deduplicatedContent = await _redisService.GetDeduplicatedContentAsync(sessionId);
+                if (deduplicatedContent == null)
+                {
+                    _logger.LogWarning($"Deduplicated content not found for sessionId: {sessionId}");
+                    return NotFound("Deduplicated content not found. Please run deduplication first.");
+                }
+
+                // Return the deduplicated file
+                return File(deduplicatedContent, "application/json", $"deduplicated_{sessionId}.json");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error retrieving deduplicated content for sessionId: {sessionId}");
+                return StatusCode(500, "An error occurred while retrieving deduplicated content");
             }
         }
     }
