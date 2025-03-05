@@ -51,6 +51,6 @@ The .NET Web API should now be running.
     - Once that is finished running, type in `sudo apt install redis-server`
     - Once that completes, type in `sudo service redis-server start`
     - Redis should now be started
-    - To check if Redis is running, type in `redis-cli ping`
-    - `pong` should be returned
+    - To check if Redis is running, type in `redis-cli PING`
+    - `PONG` should be returned
     
