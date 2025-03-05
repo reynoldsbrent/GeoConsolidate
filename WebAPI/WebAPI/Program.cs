@@ -22,6 +22,16 @@ namespace WebAPI
 
             // Add services to the container.
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp", policy =>
+                {
+                    policy.WithOrigins("http://localhost:3000")
+                        .AllowAnyMethod()
+                        .AllowAnyHeader();
+                });
+            });
+
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -44,7 +54,7 @@ namespace WebAPI
             }
 
             app.UseHttpsRedirection();
-
+            app.UseCors("AllowReactApp");
             app.UseAuthorization();
 
 
