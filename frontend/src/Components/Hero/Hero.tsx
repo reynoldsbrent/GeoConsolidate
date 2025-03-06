@@ -10,7 +10,7 @@ const Hero = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="md:w-1/2 mb-8 md:mb-0">
-              <h1 className="text-5xl font-bold mb-4">Unify Your Geographic Data</h1>
+              <h1 className="text-5xl font-bold mb-4">Unify Your Geographic Datasets</h1>
               <p className="text-xl mb-8">Transform messy location data into clean, standardized datasets with intelligent geographical deduplication.</p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/upload" className="bg-white text-emerald-700 py-2 px-6 rounded-lg text-lg font-semibold hover:bg-emerald-50 transition duration-300 flex items-center">
@@ -51,8 +51,7 @@ const Hero = () => {
           </div>
         </div>
       </section>
-
-      {/* CTA Section */}
+          
       <section className="bg-emerald-700 text-white py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-6">Ready to Clean Your Location Data?</h2>
@@ -80,7 +79,7 @@ const features = [
   {
     icon: <Upload className="h-12 w-12" />,
     title: "Easy Integration",
-    description: "Simply upload your dataset and let GeoConsolidate handle the rest. Compatible with CSV, Excel, and other common file formats."
+    description: "Simply upload your dataset and let GeoConsolidate handle the rest. Compatible with the JSON file format."
   }
 ];
 
